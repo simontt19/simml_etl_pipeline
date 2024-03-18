@@ -1,4 +1,6 @@
 import os
+import time
+import logging
 from dataservice.body import Expressions, Body
 from dataservice.query_configuration import QueryConfiguration
 from dataservice.sdk import Client
@@ -6,6 +8,11 @@ import pandas as pd
 import requests
 import json
 from google.cloud import firestore
+from apscheduler.schedulers.background import BackgroundScheduler
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # data service authentication
 DS_APPKEY = 'resbbi_general.dataservice.simml.5htCFNs8'
@@ -32,6 +39,7 @@ def init_client(appKey, appSecret):
     return c
 
 def retrieve_simml_meta_registration_function():
+    logger.info("Retrieving SIMML meta registration data...")
     # Initialize the Client
     c = init_client(DS_APPKEY, DS_APPSECRET)
     expressions = Expressions().getExpressions()
@@ -42,7 +50,7 @@ def retrieve_simml_meta_registration_function():
         raw_data = i
     # Transform data into a DataFrame
     df = pd.DataFrame([entry["values"] for entry in raw_data])
-
+    logger.info("SIMML meta registration data retrieved.")
     return df
 
 def get_asset_name(row):
@@ -57,6 +65,7 @@ def get_asset_name(row):
     return f"{row['task_name']}_{row['asset_id']}"
 
 def load_and_preprocess():
+    logger.info("Loading and preprocessing data...")
     ori = retrieve_simml_meta_registration_function()
     ori['creation_datetime'] = pd.to_datetime(ori['creation_datetime'])
     df = ori.loc[ori.groupby('path')['creation_datetime'].idxmax()]
@@ -71,17 +80,19 @@ def load_and_preprocess():
     f2 = df['instance_code'].apply(lambda x: "instance_code" not in x.lower())
 
     df_fil = df[f1&f2]
+    logger.info("Data loaded and preprocessed.")
     return df_fil
 
 
 def update_data_to_firestore(df):
+    logger.info("Updating data to Firestore...")
     # Get unique task IDs from the DataFrame
     task_ids = df['task_id'].unique()
     c = 0
     s = 0
     # Iterate over each task ID
     for task_id in task_ids:
-        print(f"updating task {task_id}")
+        logger.info(f"Updating task {task_id}...")
         # Get the subset of the DataFrame for the current task
         task_df = df[df['task_id'] == task_id]
 
@@ -105,7 +116,7 @@ def update_data_to_firestore(df):
         # Iterate over each asset for the current task
         for _, asset_row in task_df.iterrows():
             asset_id = asset_row['asset_id']
-            print(f"updating asset {asset_id}")
+            logger.info(f"Updating asset {asset_id}...")
 
             # Check if the asset document exists
             asset_ref = task_ref.collection('assets').document(str(asset_id))
@@ -125,6 +136,27 @@ def update_data_to_firestore(df):
                 asset_ref.update(asset_data)
             else:
                 asset_ref.set(asset_data)
+    logger.info("Data updated to Firestore.")
 
-df = load_and_preprocess()
-update_data_to_firestore(df)
+def main():
+    logger.info("Starting the main process...")
+    df = load_and_preprocess()
+    update_data_to_firestore(df)
+    logger.info("Main process completed.")
+
+if __name__ == "__main__":
+    logger.info("Starting the script...")
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(main, 'interval', minutes=5)
+    scheduler.start()
+    logger.info("Scheduler started. Running the main process every 5 minutes.")
+
+    main()  # Run the main process immediately
+
+    try:
+        while True:
+            time.sleep(60)
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Stopping the script...")
+        scheduler.shutdown()
+        logger.info("Script stopped.")
