@@ -68,7 +68,11 @@ def load_and_preprocess():
     logger.info("Loading and preprocessing data...")
     ori = retrieve_simml_meta_registration_function()
     ori['creation_datetime'] = pd.to_datetime(ori['creation_datetime'])
-    df = ori.loc[ori.groupby('path')['creation_datetime'].idxmax()]
+    f1 = ori['other_info'].apply(lambda x: json.loads(x)['status']!="init")
+    f2 = ori['other_info'].apply(lambda x: json.loads(x)['status']!="error")
+    ori_fil = ori[f1&f2]
+
+    df = ori_fil.loc[ori_fil.groupby('path')['creation_datetime'].idxmax()]
     df['last_updated_datetime'] = pd.to_datetime(df['last_updated_datetime'])
     df['task_id'] = df.apply(lambda x: x['project_name'] + "_" + x['name'], axis=True)
     df['asset_id'] = df['path'].apply(lambda x: x.split('/')[-2])
@@ -76,10 +80,10 @@ def load_and_preprocess():
     df['url'] = df.apply(lambda x:  f"https://datasuite.shopee.io/scheduler/dev/task/{x['task_code']}/instance/{x['instance_code']}/detail", axis=True)
     df['task_name'] = df.apply(lambda x: x['project_name'] + '/' + x['name'], axis=1)
     df['asset_name'] = df.apply(get_asset_name, axis=1)
-    f1 = df['other_info'].apply(lambda x: json.loads(x)['status']!="init")
+
     f2 = df['instance_code'].apply(lambda x: "instance_code" not in x.lower())
 
-    df_fil = df[f1&f2]
+    df_fil = df[f2]
     logger.info("Data loaded and preprocessed.")
     return df_fil
 
