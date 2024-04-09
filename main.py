@@ -151,7 +151,7 @@ def main():
 if __name__ == "__main__":
     logger.info("Starting the script...")
     scheduler = BackgroundScheduler()
-    scheduler.add_job(main, 'interval', minutes=5)
+    scheduler.add_job(main, 'interval', minutes=60)
     scheduler.start()
     logger.info("Scheduler started. Running the main process every 5 minutes.")
 
