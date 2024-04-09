@@ -106,7 +106,7 @@ def update_data_to_firestore(df):
         # Update the task document
         task_data = {
             'asset_count': len(task_df),
-            'creation_datetime': task_df['creation_datetime'].min(),
+            'creation_date': task_df['creation_datetime'].min(),
             'creator': task_df['creator'].iloc[0],
             'last_update_date': task_df['last_updated_datetime'].max(),
             'name': task_df['task_name'].iloc[0],
