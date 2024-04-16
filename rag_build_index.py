@@ -13,26 +13,8 @@ import time
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 firebase_path = "react-simml-firebase-adminsdk-qrzgh-165d958a7c.json"
-model_path = './sentence_transformer_model'
-
-model_relative_path = './sentence_transformer_model'
-model_absolute_path = os.path.abspath(model_relative_path)
-
 # Check if the model is already saved
-if os.path.exists('model.pkl'):
-    # Load the model from the saved file
-    with open('model.pkl', 'rb') as file:
-        model = pickle.load(file)
-    print("Model loaded from model.pkl")
-else:
-    # Load the model from the local path
-    print(f"Loading model from {model_absolute_path}")
-    model = SentenceTransformer(model_absolute_path)
-    
-    # Save the loaded model instance to a file
-    with open('model.pkl', 'wb') as file:
-        pickle.dump(model, file)
-    print("Model saved to model.pkl")
+model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 # Initialize Firebase Admin using the service account
 cred = credentials.Certificate(firebase_path)
