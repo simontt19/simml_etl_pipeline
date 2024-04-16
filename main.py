@@ -71,12 +71,17 @@ def load_and_preprocess():
     f1 = ori['other_info'].apply(lambda x: json.loads(x)['status']!="init")
     f2 = ori['other_info'].apply(lambda x: json.loads(x)['status']!="error")
     ori_fil = ori[f1&f2]
-
+    def parse_task_code(x):
+        try:
+            return x.split("_")[0] + "_" + x.split("_")[1] + "_" + x.split("_")[2] + "_" + x.split("_")[3]
+        except:
+            return x
     df = ori_fil.loc[ori_fil.groupby('path')['creation_datetime'].idxmax()]
     df['last_updated_datetime'] = pd.to_datetime(df['last_updated_datetime'])
     df['task_id'] = df.apply(lambda x: x['project_name'] + "_" + x['name'], axis=True)
     df['asset_id'] = df['path'].apply(lambda x: x.split('/')[-2])
-    df['task_code'] = df['instance_code'].apply(lambda x: x.split("_")[0] + "_" + x.split("_")[1] + "_" + x.split("_")[2] + "_" + x.split("_")[3])
+    print(df['instance_code'])
+    df['task_code'] = df['instance_code'].apply(lambda x: parse_task_code(x))
     df['url'] = df.apply(lambda x:  f"https://datasuite.shopee.io/scheduler/dev/task/{x['task_code']}/instance/{x['instance_code']}/detail", axis=True)
     df['task_name'] = df.apply(lambda x: x['project_name'] + '/' + x['name'], axis=1)
     df['asset_name'] = df.apply(get_asset_name, axis=1)
