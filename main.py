@@ -73,16 +73,23 @@ def load_and_preprocess():
     ori_fil = ori[f1&f2]
     def parse_task_code(x):
         try:
-            return x.split("_")[0] + "_" + x.split("_")[1] + "_" + x.split("_")[2] + "_" + x.split("_")[3]
+            if "adhoc" in x:
+                return x.replace("_" + x.split("_")[-1], "")
+            return x.replace("_" + x.split("_")[-3] + "_" + x.split("_")[-2] + "_" + x.split("_")[-1], "")
         except:
             return x
+        
+    def form_url(x):
+        if "adhoc" in x['instance_code']:
+            return f"https://datasuite.shopee.io/scheduler/dev/adhoc/{x['instance_code']}/log"
+        return f"https://datasuite.shopee.io/scheduler/dev/task/{x['task_code']}/instance/{x['instance_code']}/detail"
     df = ori_fil.loc[ori_fil.groupby('path')['creation_datetime'].idxmax()]
     df['last_updated_datetime'] = pd.to_datetime(df['last_updated_datetime'])
     df['task_id'] = df.apply(lambda x: x['project_name'] + "_" + x['name'], axis=True)
     df['asset_id'] = df['path'].apply(lambda x: x.split('/')[-2])
     print(df['instance_code'])
     df['task_code'] = df['instance_code'].apply(lambda x: parse_task_code(x))
-    df['url'] = df.apply(lambda x:  f"https://datasuite.shopee.io/scheduler/dev/task/{x['task_code']}/instance/{x['instance_code']}/detail", axis=True)
+    df['url'] = df.apply(lambda x:  form_url(x), axis=True)
     df['task_name'] = df.apply(lambda x: x['project_name'] + '/' + x['name'], axis=1)
     df['asset_name'] = df.apply(get_asset_name, axis=1)
 
